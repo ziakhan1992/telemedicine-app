@@ -1,19 +1,23 @@
 const express = require('express');
+const admin = require('firebase-admin');
+
 const app = express();
 const port = 3000;
 
+// Your Firebase configuration from the Firebase Console
+// Initialize Firebase Admin SDK
+admin.initializeApp();
+const db = admin.firestore();
+
 // Allow JSON data in requests
 app.use(express.json());
-
-// In-memory storage for appointments (temporary)
-let appointments = [];
 
 // Root endpoint
 app.get('/', (req, res) => {
   res.send('Welcome to my telemedicine app!');
 });
 
-// Login endpoint (from previous step)
+// Login endpoint
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -27,19 +31,33 @@ app.post('/login', (req, res) => {
 });
 
 // Create appointment endpoint
-app.post('/appointments', (req, res) => {
+app.post('/appointments', async (req, res) => {
   const { patientEmail, doctorName, date, time } = req.body;
   if (!patientEmail || !doctorName || !date || !time) {
     return res.status(400).send('All fields are required');
   }
-  const appointment = { patientEmail, doctorName, date, time, id: appointments.length + 1 };
-  appointments.push(appointment);
-  res.status(201).send('Appointment booked: ' + JSON.stringify(appointment));
+  try {
+    const docRef = await db.collection('appointments').add({
+      patientEmail,
+      doctorName,
+      date,
+      time
+    });
+    res.status(201).send('Appointment booked with ID: ' + docRef.id);
+  } catch (error) {
+    res.status(500).send('Error: ' + error.message);
+  }
 });
 
 // List appointments endpoint
-app.get('/appointments', (req, res) => {
-  res.send(appointments);
+app.get('/appointments', async (req, res) => {
+  try {
+    const snapshot = await db.collection('appointments').get();
+    const appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.send(appointments);
+  } catch (error) {
+    res.status(500).send('Error: ' + error.message);
+  }
 });
 
 app.listen(port, () => {
