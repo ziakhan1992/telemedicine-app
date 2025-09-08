@@ -1,1 +1,1 @@
-"This is my telemedicine app" 
+"This is a Node.js-based telemedicine application" 
