@@ -1,12 +1,14 @@
 const express = require('express');
 const admin = require('firebase-admin');
+require('dotenv').config();
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Your Firebase configuration from the Firebase Console
-// Initialize Firebase Admin SDK
-admin.initializeApp();
+// Initialize Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.cert(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+});
 const db = admin.firestore();
 
 // Allow JSON data in requests
@@ -55,6 +57,17 @@ app.get('/appointments', async (req, res) => {
     const snapshot = await db.collection('appointments').get();
     const appointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.send(appointments);
+  } catch (error) {
+    res.status(500).send('Error: ' + error.message);
+  }
+});
+
+// Get appointments by patient email
+app.get('/appointments/:patientEmail', async (req, res) => {
+  try {
+    const snapshot = await db.collection('appointments').where('patientEmail', '==', req.params.patientEmail).get();
+    const patientAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.send(patientAppointments);
   } catch (error) {
     res.status(500).send('Error: ' + error.message);
   }
